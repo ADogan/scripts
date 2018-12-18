@@ -1,45 +1,66 @@
-# This script will replace the author info on all commits!!!
-# Even commits made by other authors. 
-# So only use this script on a repository when you are sure 
-# all commits within it are made by you.
-# !! Dont forget to change usernameOnGithub
-# !! And GIT_AUTHOR_NAME + GIT_AUTHOR_EMAIL within the filter-branch command
+#####################################################
+##### WARNING - THIS SCRIPT REWRITES GIT HISTORY ####
+##### Only run when you know what you are doing! ####
+##### I will take no responsibility for any      ####
+##### problems this script might cause!          ####
+#####################################################
+# This script will replace the author and committer info on commits!
+# Dont forget to change usernameOnGithub, Emails to check for
+# and NEW_NAME + NEW_EMAIL
 
+# Immediate push back to remote repo is disable by default, uncomment to activate.
 
-# Possible improvements:
-# Catch command line arguments when script is called with reponames
-# Loop through multiple reponames instead of calling the function multiple times
-# Use the variables newAuthor.... within the git filter command
-# 
+# Possible improvements to this script:
+# catch parameter to push for a dry run
+# catch parameter to push to remote repo 
+# catch parameter to delete temporary clone
 
-cdAndfilterbranch(){
-    repoName=${1}.git
-    usernameOnGithub=""
-    
-    # This resulted in:  fatal: empty ident name (for <>) not allowed, leaving it as this
-    # newAuthorUsername=""
-    # newAuthorMail="@"
+usernameOnGithub=""
 
-    git clone --bare https://github.com/$usernameOnGithub/$repoName
-    cd $repoName
-    echo $newAuthorUsername
-    echo $newAuthorMail
+filterBranch(){
     git filter-branch --env-filter '
-        export GIT_AUTHOR_NAME=""
-        export GIT_AUTHOR_EMAIL="@"
+        EMAIL1=""
+        EMAIL2=""
+        EMAIL3=""
+        NEW_NAME=""
+        NEW_EMAIL=""
+
+        if [ "$GIT_COMMITTER_EMAIL" = "$EMAIL1" ] || [ "$GIT_COMMITTER_EMAIL" = "$EMAIL2" ] || [ "$GIT_COMMITTER_EMAIL" = "$EMAIL3" ]
+        then
+            export GIT_COMMITTER_NAME="$NEW_NAME"
+            export GIT_COMMITTER_EMAIL="$NEW_EMAIL"
+        fi
+
+        if [ "$GIT_AUTHOR_EMAIL" = "$EMAIL1" ] || [ "$GIT_AUTHOR_EMAIL" = "$EMAIL2" ] || [ "$GIT_AUTHOR_EMAIL" = "$EMAIL3" ]
+        then
+            export GIT_AUTHOR_NAME="$NEW_NAME"
+            export GIT_AUTHOR_EMAIL="$NEW_EMAIL"
+        fi
     ' --tag-name-filter cat -- --branches --tags
-    
-    git push --force --tags origin 'refs/heads/*'
-
-    # Change the directory to be able to delete it and if you want to run the function
-    # on a different repository
-    cd ..
-
-    # Delete temporary folder
-    rm -R $repoName
 }
 
-cdAndfilterbranch reponame1
-# cdAndfilterbranch reponame2
-# cdAndfilterbranch reponame3
-# cdAndfilterbranch etc
+cloneAndfilterbranch(){
+    for i in "$@"; do
+        echo "$i"
+        repoName=$i.git
+        
+        git clone --bare https://github.com/$usernameOnGithub/$repoName
+        cd $repoName
+        echo $newAuthorUsername
+        echo $newAuthorMail
+
+        filterBranch
+
+        # uncomment the following line you if you want to push it to the remote repo while running the script
+        # git push --force --tags origin 'refs/heads/*'
+
+        # Change the directory to one level up,
+        # Reason: to be able to delete the temporary clone and also if you want to run the function for the next repository
+        cd ..
+
+        # Delete temporary folder
+        # rm -R $repoName
+    done
+}
+
+cloneAndfilterbranch repo1 repo2 repo3
